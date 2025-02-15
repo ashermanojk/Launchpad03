@@ -34,7 +34,7 @@ export default function About() {
                 <li>Browse innovative startup campaigns</li>
                 <li>Contribute ETH directly to projects you believe in</li>
                 <li>Track campaign progress transparently</li>
-                <li>Get refunds if campaign goals aren't met</li>
+                <li>Get refunds if campaign goals are not met</li>
               </ul>
             </div>
           </div>
@@ -55,7 +55,7 @@ export default function About() {
           <h2 className="text-2xl font-semibold mb-3">Our Vision</h2>
           <p className="text-gray-700 leading-relaxed">
             We believe in democratizing access to funding for innovative startups worldwide. 
-            By leveraging blockchain technology, we're creating a transparent, efficient, and 
+            By leveraging blockchain technology, we are creating a transparent, efficient, and 
             trustless platform that connects visionary entrepreneurs with forward-thinking contributors.
           </p>
         </section>

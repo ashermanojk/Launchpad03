@@ -1,8 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getCrowdfundingContract } from "../utils/crowdfunding";
 import { useRouter } from "next/navigation";
+import IpfsImageUploader from "./ImageUploader";
+import { IPFSUploader } from '../utils/ipfsUploader';
+
+
 
 export default function CreateCampaign() {
   const router = useRouter();
@@ -10,27 +14,47 @@ export default function CreateCampaign() {
     title: '',
     description: '',
     target: '',
-    duration: 30
+    duration: 30,
+    ipfsImageUrl: ''
   });
+
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State to store the selected file
+  const ipfsUploader = new IPFSUploader();
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+
+
+      if (!selectedFile) {
+        alert("Please select an image.");
+        setLoading(false);
+        return;
+      }
+
+      const ipfsUrl = await ipfsUploader.uploadImage(selectedFile);
+
       const contract = await getCrowdfundingContract();
       await contract.createCampaign(
         formData.title,
         formData.description,
         formData.target,
-        formData.duration
+        formData.duration,
+        ipfsUrl
       );
+
       alert('Campaign created successfully!');
 
-      setFormData({ title: '', description: '', target: '', duration: 30 });
+      setFormData({ title: '', description: '', target: '', duration: 30,  ipfsImageUrl: ''});
+      setSelectedFile(null);
       router.push("/")
-    } catch (error) {
+    } 
+
+    catch (error) {
       console.error('Error creating campaign:', error);
       alert('Failed to create campaign. See console for details.');
     } finally {
@@ -38,11 +62,19 @@ export default function CreateCampaign() {
     }
   };
 
+  const handleFileSelected = (file: File | null) => {
+    setSelectedFile(file);
+  };  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  return <div className="max-w-2xl mx-auto p-6">
+  const handleIpfsImageUploaded = (ipfsUrl: string) => {
+    setFormData(prevFormData => ({ ...prevFormData, ipfsImageUrl: ipfsUrl }));
+  };
+
+  return <div className="max-w-2xl mx-auto p-6 border rounded-lg mb-5">
     <h1 className="text-3xl font-bold mb-8">Create New Campaign</h1>
     
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -60,7 +92,13 @@ export default function CreateCampaign() {
           placeholder="Enter campaign title"
         />
       </div>
-
+      <div>
+      <IpfsImageUploader
+          onFileSelected={handleFileSelected} // Pass the handler function
+          onImageUploaded={handleIpfsImageUploaded} // Pass the handler function
+       />
+      </div> 
+      
       <div>
         <label className="block text-sm font-medium mb-2">
           Description

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { getCrowdfundingContract } from '../utils/crowdfunding';
 import CampaignCard from '../components/campaignCard';
 
+
 interface Campaign {
     id: number;
     owner: string;
@@ -10,8 +11,9 @@ interface Campaign {
     description: string;
     target: string;
     deadline: Date;
-    amountCollected: string;
+    amountCollected: number;
     claimed: boolean;
+    imageUrl: string;
 }
 
 export default function Discover() {
@@ -57,10 +59,15 @@ export default function Discover() {
   if (campaigns.length === 0) return <div>No campaigns found</div>;
 
   return (
+    <div className = "border rounded-lg p-4 min-h-screen">
+      <h1 className='text-center text-4xl'>Discover campaigns started on Launchpad</h1>
+
+    
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
       {campaigns.map((campaign) => (
         <CampaignCard key={campaign.id} campaign={campaign} />
       ))}
+    </div>
     </div>
   );
 }

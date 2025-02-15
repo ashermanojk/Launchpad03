@@ -1,3 +1,5 @@
+  //npx hardhat ignition deploy ./ignition/modules/Crowdfunding.ts --network localhost
+
 import { ethers } from 'ethers';
 import { abi as contractABI } from "../../hardhat/artifacts/contracts/Crowdfunding.sol/Crowdfunding.json";
 
@@ -12,14 +14,12 @@ export class CrowdfundingContract {
     this.contract = new ethers.Contract(contractAddress, contractABI, this.signer);
   }
 
-
-
   async createCampaign(
-    title: string,
-    description: string,
-    target: string,
-    durationInDays: number
-  ) {
+    title: string, 
+    description: string, 
+    target: string, 
+    durationInDays: number, 
+    imageUrl: string  ) {
     const deadline = Math.floor(Date.now() / 1000) + durationInDays * 24 * 60 * 60;
     const targetWei = ethers.parseEther(target);
     
@@ -27,7 +27,8 @@ export class CrowdfundingContract {
       title,
       description,
       targetWei,
-      deadline
+      deadline,
+      imageUrl
     );
     return tx.wait();
   }
@@ -51,7 +52,7 @@ export class CrowdfundingContract {
 
   async getCampaign(campaignId: number) {
     try {
-      const [owner, title, description, target, deadline, amountCollected, claimed] = 
+      const [owner, title, description, target, deadline, amountCollected, claimed, imageUrl] = 
         await this.contract.getCampaign(campaignId);
       
       return {
@@ -62,7 +63,8 @@ export class CrowdfundingContract {
         target: ethers.formatEther(target),
         deadline: new Date(Number(deadline) * 1000),
         amountCollected: ethers.formatEther(amountCollected),
-        claimed
+        claimed,
+        imageUrl
       };
     } catch (error) {
       console.error('Error fetching campaign:', error);
@@ -73,6 +75,10 @@ export class CrowdfundingContract {
   async getContribution(campaignId: number, address: string) {
     const contribution = await this.contract.getContribution(campaignId, address);
     return ethers.formatEther(contribution);
+  }
+
+  async getContributors(campaignId: number): Promise<string[]> {
+    return await this.contract.getContributors(campaignId);
   }
 
   async getTotalCampaigns() {
@@ -90,7 +96,7 @@ export class CrowdfundingContract {
 // Helper function to get contract instance
 export async function getCrowdfundingContract() {
   if (typeof window.ethereum !== 'undefined') {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
     const contract = new CrowdfundingContract();
     await contract.initialize(provider);
     return contract;

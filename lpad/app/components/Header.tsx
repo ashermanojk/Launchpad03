@@ -3,10 +3,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 declare global {
-  interface Window {
-    ethereum?: any;
+    interface Window {
+      ethereum?: {
+        isMetaMask?: boolean;
+        request: (...args: unknown[]) => Promise<unknown> | undefined;
+        on?: (event: string, handler: (...args: unknown[]) => void) => void;
+        removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
+      };
+    }
   }
-}
+  
 
 export default function Header() {
     const [account, setAccount] = useState('');
@@ -16,12 +22,12 @@ export default function Header() {
         checkConnection();
         
         // Listen for account changes
-        if (window.ethereum) {
+        if (window.ethereum && window.ethereum.on) {
             window.ethereum.on('accountsChanged', handleAccountsChanged);
         }
 
         return () => {
-            if (window.ethereum) {
+            if (window.ethereum && window.ethereum.removeListener) {
                 window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
             }
         };
@@ -30,9 +36,10 @@ export default function Header() {
     const checkConnection = async () => {
         if (typeof window.ethereum !== 'undefined') {
             try {
-                const accounts = await window.ethereum.request({ 
-                    method: 'eth_accounts' 
-                });
+                const accounts = await window.ethereum.request({
+                    method: 'eth_accounts'
+                }) as string[];
+                console.log(accounts);
                 if (accounts.length > 0) {
                     setAccount(accounts[0]);
                 }
@@ -42,7 +49,8 @@ export default function Header() {
         }
     };
 
-    const handleAccountsChanged = (accounts: string[]) => {
+    const handleAccountsChanged = (...args: unknown[]) => {
+        const accounts = args[0] as string[];
         if (accounts.length > 0) {
             setAccount(accounts[0]);
         } else {
@@ -55,7 +63,7 @@ export default function Header() {
             try {
                 const accounts = await window.ethereum.request({ 
                     method: 'eth_requestAccounts' 
-                });
+                }) as string[];
                 setAccount(accounts[0]);
             } catch (error) {
                 console.error('Error connecting wallet:', error);

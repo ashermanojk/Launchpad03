@@ -5,25 +5,59 @@ import { getCrowdfundingContract } from '../../utils/crowdfunding';
 import { use } from 'react';
 import { ethers } from 'ethers';
 import Image from 'next/image';
-import SVGImage from '../../lib/9930924_4269957.svg';
+//import SVGImage from '../../lib/9930924_4269957.svg';
 
 
 interface Campaign {
-  id: number;
+  id: number; 
   owner: string;
   title: string;
   description: string;
-  target: string;
+  target: number;
   deadline: Date;
-  amountCollected: string;
+  amountCollected: number;
   claimed: boolean;
+  imageUrl: string;
 }
+
+async function getCampaign(id: number): Promise<Campaign> {
+  const contract = await getCrowdfundingContract();
+  const campaign = await contract.getCampaign(id);
+
+
+  const safeFormatEther = (value: any): string => {
+    try {
+      // Check if value is already a string with decimal point
+      if (typeof value === 'string' && value.includes('.')) {
+        return value;
+      }
+      return ethers.formatEther(value);
+    } catch (error) {
+      console.error('Error formatting value:', error);
+      return '0';
+    }
+  };
+
+  return {
+    id: Number(id),
+    title: campaign.title,
+    description: campaign.description,
+    target: Number(campaign.target),
+    amountCollected: Number(campaign.amountCollected),
+    deadline: new Date(Number(campaign.deadline) * 1000), // Convert to milliseconds
+    owner: campaign.owner,
+    imageUrl: campaign.imageUrl,
+    claimed: campaign.claimed
+  };
+}
+
 
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [contributionAmount, setContributionAmount] = useState('');
   const [isOwner, setIsOwner] = useState(false);
+  const [contributors, setContributors] = useState<string[]>([]);
   const cid = use(params);
 
   useEffect(() => {
@@ -32,14 +66,21 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
       
       try {
         const contract = await getCrowdfundingContract();
-        const campaignData = await contract.getCampaign(Number(cid.id));
+        const campaignData = await getCampaign(Number(cid.id));
         setCampaign(campaignData);
+
+        const contributorsData = await contract.getContributors(Number(cid.id));
+        setContributors(contributorsData);
         
         // Check if current user is the owner
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const address = await signer.getAddress();
-        setIsOwner(address.toLowerCase() === campaignData.owner.toLowerCase());
+        if (typeof window !== 'undefined' && window.ethereum) {
+          const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+          const signer = await provider.getSigner();
+          const address = await signer.getAddress();
+          setIsOwner(address.toLowerCase() === campaignData.owner.toLowerCase());
+        } else {
+          console.error('MetaMask is not installed!');
+        }
       } catch (error) {
         console.error('Error fetching campaign:', error);
       } finally {
@@ -50,6 +91,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
     fetchCampaign();
   }, [cid.id]);
 
+ 
   const handleContribute = async () => {
     if (!campaign || !contributionAmount) return;
     
@@ -88,10 +130,25 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
   if (!campaign) return <div>Campaign not found</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">{campaign.title}</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className='h-screen text-left'>
+    <div className="max-w-4xl mx-auto mb-5 p-6 border rounded-lg shadow-lg">
+      <h1 className="text-3xl font-bold mb-4 text-center">{campaign.title}</h1>
+
+      <div className="relative">
+        <div className="flex justify-center items-center">
+          <Image
+            src={campaign.imageUrl}
+            width={800}
+            height={600}
+            alt={`Campaign Image`}
+            className="rounded-lg object-cover"
+            style={{ maxHeight: '600px', maxWidth: '800px' }}
+          />
+        </div>
+
+      </div>
+
+      <div className="flex flex-col justify-center items-left">
+        <div className='text-center'>
           <p className="text-gray-600 mb-4">{campaign.description}</p>
           <p className="mb-2">Target: {campaign.target} ETH</p>
           <p className="mb-2">Collected: {campaign.amountCollected} ETH</p>
@@ -101,10 +158,6 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
         </div>
         
         <div className="space-y-4 flex flex-col items-center">
-          <Image src={SVGImage} 
-          width={300} 
-          height={300} 
-          alt="Ethereum Logo" />
           <div>
             <input
               type="number"
@@ -127,7 +180,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             <button
               onClick={handleWithdraw}
               disabled={!canWithdraw}
-              className={`w-full p-2 text-white rounded-md ${
+              className={`w-1/2 p-2 text-white rounded-md ${
                 canWithdraw 
                   ? 'bg-green-500 hover:bg-green-600' 
                   : 'bg-gray-400 cursor-not-allowed'
@@ -137,6 +190,14 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             </button>
           )}
         </div>
+      </div>
+      <div className="mt-8 flex flex-col justify-center items-center">
+        <h2 className="text-2xl font-bold mb-4">Contributors</h2>
+        <ul className="list-disc pl-5">
+          {contributors.map((contributor, index) => (
+            <li key={index} className="text-gray-600">{contributor}</li>
+          ))}
+        </ul>
       </div>
     </div>
   );

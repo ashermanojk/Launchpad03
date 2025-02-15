@@ -8,15 +8,17 @@ contract Crowdfunding {
         string description;
         uint256 target;
         uint256 deadline;
+        string imageURL;
         uint256 amountCollected;
         bool claimed;
         mapping(address => uint256) contributions;
+        address[] contributors;
     }
 
     mapping(uint256 => Campaign) public campaigns;
     uint256 public numberOfCampaigns = 0;
 
-    event CampaignCreated(uint256 indexed campaignId, address indexed owner, string title, uint256 target, uint256 deadline);
+    event CampaignCreated(uint256 indexed campaignId, address indexed owner, string title, uint256 target, uint256 deadline, string imageURL);
     event ContributionMade(uint256 indexed campaignId, address indexed contributor, uint256 amount);
     event FundsClaimed(uint256 indexed campaignId, address indexed owner, uint256 amount);
     event RefundIssued(uint256 indexed campaignId, address indexed contributor, uint256 amount);
@@ -25,7 +27,8 @@ contract Crowdfunding {
         string memory _title,
         string memory _description,
         uint256 _target,
-        uint256 _deadline
+        uint256 _deadline,
+        string memory _imageURL
     ) public returns (uint256) {
         require(_deadline > block.timestamp, "Deadline must be in the future");
         require(_target > 0, "Target amount must be greater than 0");
@@ -36,10 +39,11 @@ contract Crowdfunding {
         campaign.description = _description;
         campaign.target = _target;
         campaign.deadline = _deadline;
+        campaign.imageURL = _imageURL;
         campaign.amountCollected = 0;
         campaign.claimed = false;
 
-        emit CampaignCreated(numberOfCampaigns, msg.sender, _title, _target, _deadline);
+        emit CampaignCreated(numberOfCampaigns, msg.sender, _title, _target, _deadline, _imageURL);
         numberOfCampaigns++;
         return numberOfCampaigns - 1;
     }
@@ -48,6 +52,10 @@ contract Crowdfunding {
         Campaign storage campaign = campaigns[_campaignId];
         require(block.timestamp < campaign.deadline, "Campaign has ended");
         require(msg.value > 0, "Contribution must be greater than 0");
+
+         if (campaign.contributions[msg.sender] == 0) {
+            campaign.contributors.push(msg.sender); 
+        }
 
         campaign.contributions[msg.sender] += msg.value;
         campaign.amountCollected += msg.value;
@@ -90,7 +98,9 @@ contract Crowdfunding {
         uint256 target,
         uint256 deadline,
         uint256 amountCollected,
-        bool claimed
+        bool claimed,
+        string memory imageURL
+
     ) {
         Campaign storage campaign = campaigns[_campaignId];
         return (
@@ -100,7 +110,8 @@ contract Crowdfunding {
             campaign.target,
             campaign.deadline,
             campaign.amountCollected,
-            campaign.claimed
+            campaign.claimed,
+            campaign.imageURL
         );
     }
 
@@ -110,5 +121,9 @@ contract Crowdfunding {
 
     function getNumberOfCampaigns() public view returns (uint256) {
         return numberOfCampaigns;
+    }
+
+    function getContributors(uint256 _campaignId) public view returns (address[] memory) {
+        return campaigns[_campaignId].contributors;
     }
 } 
